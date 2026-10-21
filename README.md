@@ -2,7 +2,8 @@
 
 En browserbaseret turviser til RC-GPS-ture. Importér en GPX-fil eller en CSV
 med GPS-koordinater, tidspunkter og fart for at se et fartfarvet spor på kortet.
-Importerede filer behandles lokalt i browseren og uploades ikke.
+Importerede filer behandles lokalt i browseren. Kun ture modtaget fra den
+indloggede ESP-upload bliver gemt i Supabase.
 
 ## Kør lokalt
 
@@ -19,15 +20,31 @@ npm run dev
   (`longitude`, `lon` eller `lng`), fart i km/t (`speed_kmh`) og tid
   (`timestamp` eller `utc_date` + `utc_time`).
 
-ESP32'ens nuværende CSV indeholder dato, tid og fart, men endnu ikke GPS-
-koordinater. Websiden forklarer det, hvis filen vælges. Firmwarens eksport skal
-udvides med bredde- og længdegrad, før den kan tegne ESP32-sporet.
+## Supabase-backend (under opsætning)
 
-Kortfliser fra OpenStreetMap kræver internetforbindelse. Selve turfilen bliver
-lokalt i browseren og uploades ikke til en tjeneste. Kortudbyderen modtager
-dog de kortfelter, browseren efterspørger, så den kan se hvilket område der
-vises. Denne første version kræver hverken konto eller upload af turdata til
-skyen.
+Databaseskemaet for ture og GPS-målinger ligger i
+[`supabase/migrations`](./supabase/migrations/). Se
+[`supabase/README.md`](./supabase/README.md) for at oprette tabellerne i
+Supabase. Hver tur og dens målinger er beskyttet af Row Level Security og
+tilknyttet den bruger, der er logget ind.
+
+Kopiér `.env.example` til `.env.local`, og udfyld Supabase Project URL og
+publishable key. Opret brugeradgang i Supabase Auth; denne app tilbyder ikke
+offentlig selvregistrering. Log ind på websiden for at se gemte ture. Direkte
+ESP-upload er næste trin; import af GPX/CSV på websiden gemmer ikke filen i
+databasen.
+
+På Vercel skal `VITE_SUPABASE_URL` og `VITE_SUPABASE_PUBLISHABLE_KEY` sættes
+under projektets Environment Variables for hvert miljø, hvorefter der skal
+laves et nyt deploy. Publishable key er beregnet til klienten og begrænses af
+RLS; læg aldrig en `service_role`- eller secret key i Vite-miljøvariablerne.
+
+ESP32'ens nuværende CSV indeholder dato, tid og fart, men endnu ikke GPS-
+koordinater. Firmwaren skal udvides med bredde- og længdegrad og en direkte
+uploadfunktion, før ESP-ture kan gemmes og vises her.
+
+Kortfliser fra OpenStreetMap kræver internetforbindelse. Kortudbyderen modtager
+de kortfelter, browseren efterspørger, så den kan se hvilket område der vises.
 
 ## Udrulning til Vercel
 

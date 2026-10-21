@@ -1,7 +1,12 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
+import type { Session } from '@supabase/supabase-js'
 import TrackMap from './TrackMap'
 import { demoTrack, parseTrackFile, type TrackPoint } from './track'
+import type { Database } from './database.types'
+import { isSupabaseConfigured, supabase } from './supabase'
 import './App.css'
+
+type SavedTrip = Database['public']['Tables']['trips']['Row']
 
 function formatDuration(seconds: number) {
   const minutes = Math.floor(seconds / 60)
@@ -34,8 +39,77 @@ function App() {
   const [track, setTrack] = useState<TrackPoint[]>([])
   const [trackName, setTrackName] = useState('')
   const [error, setError] = useState('')
+  const [accountError, setAccountError] = useState('')
+  const [session, setSession] = useState<Session | null>(null)
+  const [authLoading, setAuthLoading] = useState(isSupabaseConfigured)
+  const [authBusy, setAuthBusy] = useState(false)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [savedTrips, setSavedTrips] = useState<SavedTrip[]>([])
+  const [tripsLoading, setTripsLoading] = useState(false)
+  const [loadingTripId, setLoadingTripId] = useState<string | null>(null)
+  const [currentSavedTripId, setCurrentSavedTripId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!supabase) return
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, currentSession) => {
+      setSession(currentSession)
+      setTripsLoading(Boolean(currentSession))
+      if (!currentSession) setSavedTrips([])
+      setAccountError('')
+    })
+
+    supabase.auth.getSession().then(({ data, error: sessionError }) => {
+      if (sessionError) setAccountError(`Kunne ikke hente login: ${sessionError.message}`)
+      setSession(data.session)
+      setTripsLoading(Boolean(data.session))
+      setAuthLoading(false)
+    }).catch((sessionError: unknown) => {
+      const message = sessionError instanceof Error ? sessionError.message : 'Ukendt fejl.'
+      setAccountError(`Kunne ikke hente login: ${message}`)
+      setAuthLoading(false)
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  useEffect(() => {
+    if (!session || !supabase) return
+
+    let cancelled = false
+    void (async () => {
+      try {
+        const { data, error: queryError } = await supabase
+          .from('trips')
+          .select('*')
+          .order('started_at', { ascending: false })
+          .limit(50)
+        if (cancelled) return
+        if (queryError) {
+          setAccountError(`Kunne ikke hente gemte ture: ${queryError.message}`)
+          setSavedTrips([])
+        } else {
+          setSavedTrips(data)
+        }
+        setTripsLoading(false)
+      } catch (queryError) {
+        if (cancelled) return
+        const message = queryError instanceof Error ? queryError.message : 'Ukendt fejl.'
+        setAccountError(`Kunne ikke hente gemte ture: ${message}`)
+        setSavedTrips([])
+        setTripsLoading(false)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [session])
 
   const speeds = track.map((point) => point.speedKmh)
   const topSpeed = speeds.length > 0 ? Math.max(...speeds) : 0
@@ -55,6 +129,7 @@ function App() {
       const points = await parseTrackFile(file)
       setTrack(points)
       setTrackName(file.name)
+      setCurrentSavedTripId(null)
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Filen kunne ikke læses.')
     } finally {
@@ -66,13 +141,64 @@ function App() {
     setError('')
     setTrack(demoTrack())
     setTrackName('Eksempelstur')
+    setCurrentSavedTripId(null)
   }
 
   function clearTrack() {
     setTrack([])
     setTrackName('')
     setError('')
+    setCurrentSavedTripId(null)
     if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  async function signIn(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!supabase) return
+
+    setAccountError('')
+    setAuthBusy(true)
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+    if (signInError) setAccountError(`Kunne ikke logge ind: ${signInError.message}`)
+    else setPassword('')
+    setAuthBusy(false)
+  }
+
+  async function signOut() {
+    if (!supabase) return
+    setAccountError('')
+    const { error: signOutError } = await supabase.auth.signOut()
+    if (signOutError) setAccountError(`Kunne ikke logge ud: ${signOutError.message}`)
+  }
+
+  async function loadSavedTrip(savedTrip: SavedTrip) {
+    if (!supabase) return
+    setAccountError('')
+    setLoadingTripId(savedTrip.id)
+    const { data, error: queryError } = await supabase
+      .from('gps_samples')
+      .select('recorded_at, latitude, longitude, speed_kmh')
+      .eq('trip_id', savedTrip.id)
+      .order('sample_index', { ascending: true })
+
+    if (queryError) {
+      setAccountError(`Kunne ikke hente turen: ${queryError.message}`)
+    } else if (data.length < 2) {
+      setAccountError('Den gemte tur har færre end to GPS-målinger.')
+    } else {
+      setTrack(
+        data.map((sample) => ({
+          latitude: sample.latitude,
+          longitude: sample.longitude,
+          speedKmh: sample.speed_kmh,
+          timestamp: Date.parse(sample.recorded_at),
+        })),
+      )
+      setTrackName(savedTrip.name)
+      setCurrentSavedTripId(savedTrip.id)
+      setError('')
+    }
+    setLoadingTripId(null)
   }
 
   return (
@@ -89,7 +215,7 @@ function App() {
         </a>
         <div className="privacy-pill">
           <span className="privacy-dot" />
-          Turfiler bliver på enheden
+          Gemmes kun når du vælger det
         </div>
       </header>
 
@@ -117,6 +243,80 @@ function App() {
             </div>
             <span className="step-number">01</span>
           </div>
+
+          <section className="account-panel" aria-label="Supabase-konto">
+            <div className="account-heading">
+              <div>
+                <p className="eyebrow">PRIVAT ARKIV</p>
+                <h2>{session ? 'Din konto' : 'Log ind'}</h2>
+              </div>
+              {session && <span className="live-status"><span /> TILSLUTTET</span>}
+            </div>
+            {!isSupabaseConfigured ? (
+              <p className="account-note">
+                Supabase mangler konfiguration. Tilføj projektets URL og publishable key i
+                miljøvariablerne.
+              </p>
+            ) : authLoading ? (
+              <p className="account-note">Kontrollerer login...</p>
+            ) : session ? (
+              <>
+                <p className="account-email">{session.user.email}</p>
+                <button className="demo-button account-action" type="button" onClick={() => void signOut()}>
+                  Log ud
+                </button>
+                <div className="saved-trips">
+                  <span className="stat-label">GEMTE TURE</span>
+                  {tripsLoading ? (
+                    <p className="account-note">Henter ture...</p>
+                  ) : savedTrips.length === 0 ? (
+                    <p className="account-note">Dit arkiv er tomt. Gem en importeret tur for at starte.</p>
+                  ) : (
+                    savedTrips.map((savedTrip) => (
+                      <button
+                        className={`saved-trip${savedTrip.id === currentSavedTripId ? ' selected' : ''}`}
+                        key={savedTrip.id}
+                        type="button"
+                        disabled={loadingTripId !== null}
+                        onClick={() => void loadSavedTrip(savedTrip)}
+                      >
+                        <strong>{loadingTripId === savedTrip.id ? 'Henter tur...' : savedTrip.name}</strong>
+                        <span>{new Date(savedTrip.started_at).toLocaleString()}</span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </>
+            ) : (
+              <form className="login-form" onSubmit={(event) => void signIn(event)}>
+                <label>
+                  E-mail
+                  <input
+                    autoComplete="username"
+                    type="email"
+                    value={email}
+                    onChange={(event) => setEmail(event.currentTarget.value)}
+                    required
+                  />
+                </label>
+                <label>
+                  Adgangskode
+                  <input
+                    autoComplete="current-password"
+                    type="password"
+                    value={password}
+                    onChange={(event) => setPassword(event.currentTarget.value)}
+                    required
+                  />
+                </label>
+                <button className="save-track-button" type="submit" disabled={authBusy}>
+                  {authBusy ? 'Logger ind...' : 'Log ind'}
+                </button>
+                <p className="account-note">Kontoen oprettes privat i Supabase — der er ikke offentlig tilmelding.</p>
+              </form>
+            )}
+            {accountError && <p className="error-message" role="alert">{accountError}</p>}
+          </section>
 
           <input
             ref={fileInputRef}
@@ -213,7 +413,7 @@ function App() {
           </div>
 
           <p className="local-note">
-            <span aria-hidden="true">⌑</span> Turfiler behandles lokalt og uploades ikke.
+            <span aria-hidden="true">⌑</span> Importerede filer bliver lokalt på enheden.
           </p>
         </aside>
 
