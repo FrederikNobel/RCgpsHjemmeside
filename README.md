@@ -39,9 +39,14 @@ under projektets Environment Variables for hvert miljø, hvorefter der skal
 laves et nyt deploy. Publishable key er beregnet til klienten og begrænses af
 RLS; læg aldrig en `service_role`- eller secret key i Vite-miljøvariablerne.
 
-ESP32'ens nuværende CSV indeholder dato, tid og fart, men endnu ikke GPS-
-koordinater. Firmwaren skal udvides med bredde- og længdegrad og en direkte
-uploadfunktion, før ESP-ture kan gemmes og vises her.
+ESP-uploadens Vercel Function kræver også server-side variablerne
+`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ESP32_OWNER_USER_ID` og en
+tilfældig `DEVICE_UPLOAD_TOKEN`. De må ikke have `VITE_`-præfiks eller ligge
+i Git. Indtast `DEVICE_UPLOAD_TOKEN` på ESP'ens lokale opsætningsside.
+
+ESP-uploaden forventer målinger med bredde- og længdegrad samt tid og fart.
+Firmwaren skal udvides med disse GPS-data og en direkte uploadfunktion, før
+ESP-ture kan gemmes og vises her.
 
 Kortfliser fra OpenStreetMap kræver internetforbindelse. Kortudbyderen modtager
 de kortfelter, browseren efterspørger, så den kan se hvilket område der vises.

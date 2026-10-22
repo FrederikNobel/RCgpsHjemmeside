@@ -19,5 +19,8 @@ in the browser.
 For a private, single-owner start, turn off public sign-ups in Supabase Auth
 and create the owner account in the Supabase dashboard. The app has a sign-in
 form but no public sign-up form. Signed-in owners can view saved trips through
-the RLS-protected API. The browser does not create or upload trips; direct
-ESP32 upload is a separate next step.
+the RLS-protected API. The browser does not create or upload trips; the ESP32
+uploads through the same-origin `/api/esp-upload` Vercel Function. Set these
+server-only Vercel environment variables: `SUPABASE_URL`,
+`SUPABASE_SERVICE_ROLE_KEY`, `ESP32_OWNER_USER_ID`, and a random
+`DEVICE_UPLOAD_TOKEN`. Never prefix server secrets with `VITE_`.
