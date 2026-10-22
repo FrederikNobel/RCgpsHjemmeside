@@ -42,6 +42,9 @@ ESP-uploadens Vercel Function kræver også server-side variablerne
 `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ESP32_OWNER_USER_ID` og en
 tilfældig `DEVICE_UPLOAD_TOKEN`. De må ikke have `VITE_`-præfiks eller ligge
 i Git. Indtast `DEVICE_UPLOAD_TOKEN` på ESP'ens lokale opsætningsside.
+GPS-ture fra nyere firmware indeholder også omgangstider. Kør den nye
+`supabase/migrations/20261022214500_add_trip_lap_times.sql`-migration i
+Supabase SQL Editor, før den opdaterede uploadfunktion deployes.
 
 Firmwaren inkluderer nu GPS-koordinater, hotspot-opsætning og uploadflow.
 Uploaden er klar til hardwaretest, når servervariablerne er sat, firmwaren er

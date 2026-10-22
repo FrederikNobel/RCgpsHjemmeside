@@ -1,15 +1,19 @@
 # Supabase database
 
 `migrations/20261021203000_create_private_tracks.sql` creates the first
-private schema for trips and GPS samples. Both tables use row-level security.
-Only authenticated users can access rows belonging to their own trips;
-anonymous API access is revoked.
+private schema for trips and GPS samples. The later
+`migrations/20261022214500_add_trip_lap_times.sql` adds stored lap times to
+trips. Both tables use row-level security. Only authenticated users can access
+rows belonging to their own trips; anonymous API access is revoked.
 
 ## Apply the initial migration
 
 In the Supabase project, open **SQL Editor**, create a new query, paste the
 migration SQL, and run it. Do not paste any database password or secret key
 into the repository or chat.
+Run each migration in timestamp order. If the initial schema is already in
+place, run only the lap-times migration before deploying the updated upload
+function.
 
 The browser app uses Supabase Auth and the public publishable key. Configure
 `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` locally in `.env.local`

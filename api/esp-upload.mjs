@@ -35,6 +35,14 @@ function validatePayload(body) {
   if (Date.parse(trip.ended_at) < Date.parse(trip.started_at)) {
     return 'Trip end time cannot be before its start time.'
   }
+  const laps = trip.laps ?? []
+  if (
+    !Array.isArray(laps) ||
+    laps.length > 30 ||
+    laps.some((duration) => !Number.isInteger(duration) || duration < 5000 || duration > 0xffffffff)
+  ) {
+    return 'Lap durations must be between 5000 ms and 4294967295 ms.'
+  }
   if (!Array.isArray(samples) || samples.length < 2 || samples.length > MAX_SAMPLES) {
     return `Trip must contain between 2 and ${MAX_SAMPLES} samples.`
   }
@@ -132,6 +140,7 @@ export default async function handler(req, res) {
         name: payload.trip.name,
         started_at: payload.trip.started_at,
         ended_at: payload.trip.ended_at,
+        laps: payload.trip.laps ?? [],
       },
       { onConflict: 'id', ignoreDuplicates: true },
     )
@@ -149,7 +158,7 @@ export default async function handler(req, res) {
   try {
     const result = await supabase
       .from('trips')
-      .select('user_id, name, started_at, ended_at')
+      .select('user_id, name, started_at, ended_at, laps')
       .eq('id', payload.trip.id)
       .maybeSingle()
     if (result.error) {
@@ -166,7 +175,8 @@ export default async function handler(req, res) {
     existingTrip.user_id !== ownerUserId ||
     existingTrip.name !== payload.trip.name ||
     Date.parse(existingTrip.started_at) !== Date.parse(payload.trip.started_at) ||
-    Date.parse(existingTrip.ended_at) !== Date.parse(payload.trip.ended_at)
+    Date.parse(existingTrip.ended_at) !== Date.parse(payload.trip.ended_at) ||
+    JSON.stringify(existingTrip.laps ?? []) !== JSON.stringify(payload.trip.laps ?? [])
   ) {
     return respond(res, 409, { error: 'Trip id already belongs to a different trip.' })
   }

@@ -554,6 +554,35 @@
   letter-spacing: 0;
 }
 
+.lap-results {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.lap-results ol {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lap-results li {
+  display: flex;
+  justify-content: space-between;
+  padding: 7px 9px;
+  border: 1px solid #293532;
+  border-radius: 7px;
+  color: #a9b8b1;
+  font-size: 10px;
+}
+
+.lap-results li strong {
+  color: var(--mint);
+  font-family: var(--mono);
+}
+
 .speed-legend {
   margin-top: 18px;
 }

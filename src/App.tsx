@@ -14,6 +14,21 @@ function formatDuration(seconds: number) {
   return `${minutes}:${String(remainder).padStart(2, '0')}`
 }
 
+function formatLapTime(milliseconds: number) {
+  const minutes = Math.floor(milliseconds / 60000)
+  const seconds = Math.floor(milliseconds / 1000) % 60
+  const tenths = Math.floor((milliseconds % 1000) / 100)
+  return `${minutes}:${String(seconds).padStart(2, '0')}.${tenths}`
+}
+
+function parseLapTimes(value: unknown): number[] {
+  if (!Array.isArray(value)) return []
+  return value.filter(
+    (duration): duration is number =>
+      typeof duration === 'number' && Number.isInteger(duration) && duration >= 5000,
+  )
+}
+
 function calculateDistance(points: TrackPoint[]) {
   const earthRadiusMeters = 6_371_000
   let distance = 0
@@ -46,6 +61,7 @@ function App() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [savedTrips, setSavedTrips] = useState<SavedTrip[]>([])
+  const [lapTimes, setLapTimes] = useState<number[]>([])
   const [tripsLoading, setTripsLoading] = useState(false)
   const [loadingTripId, setLoadingTripId] = useState<string | null>(null)
   const [currentSavedTripId, setCurrentSavedTripId] = useState<string | null>(null)
@@ -129,6 +145,7 @@ function App() {
       const points = await parseTrackFile(file)
       setTrack(points)
       setTrackName(file.name)
+      setLapTimes([])
       setCurrentSavedTripId(null)
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Filen kunne ikke læses.')
@@ -141,12 +158,14 @@ function App() {
     setError('')
     setTrack(demoTrack())
     setTrackName('Eksempelstur')
+    setLapTimes([])
     setCurrentSavedTripId(null)
   }
 
   function clearTrack() {
     setTrack([])
     setTrackName('')
+    setLapTimes([])
     setError('')
     setCurrentSavedTripId(null)
     if (fileInputRef.current) fileInputRef.current.value = ''
@@ -195,6 +214,7 @@ function App() {
         })),
       )
       setTrackName(savedTrip.name)
+      setLapTimes(parseLapTimes(savedTrip.laps))
       setCurrentSavedTripId(savedTrip.id)
       setError('')
     }
@@ -405,6 +425,20 @@ function App() {
               <strong>{formatDuration(durationSeconds)} <small>min</small></strong>
             </article>
           </div>
+
+          {lapTimes.length > 0 && (
+            <section className="lap-results" aria-label="Omgangstider">
+              <span className="stat-label">OMGANGETIDER</span>
+              <ol>
+                {lapTimes.map((lapTime, index) => (
+                  <li key={`${index}-${lapTime}`}>
+                    <span>Omgang {index + 1}</span>
+                    <strong>{formatLapTime(lapTime)}</strong>
+                  </li>
+                ))}
+              </ol>
+            </section>
+          )}
 
           <div className="speed-legend">
             <span className="stat-label">FART PÅ SPORET</span>

@@ -1,3 +1,5 @@
+type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
+
 export interface Database {
   public: {
     Tables: {
@@ -46,6 +48,7 @@ export interface Database {
           name: string
           started_at: string
           ended_at: string | null
+          laps: Json
           created_at: string
         }
         Insert: {
@@ -54,6 +57,7 @@ export interface Database {
           name?: string
           started_at: string
           ended_at?: string | null
+          laps?: Json
           created_at?: string
         }
         Update: {
@@ -62,6 +66,7 @@ export interface Database {
           name?: string
           started_at?: string
           ended_at?: string | null
+          laps?: Json
           created_at?: string
         }
         Relationships: []
