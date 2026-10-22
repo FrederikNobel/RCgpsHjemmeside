@@ -30,9 +30,8 @@ tilknyttet den bruger, der er logget ind.
 
 Kopiér `.env.example` til `.env.local`, og udfyld Supabase Project URL og
 publishable key. Opret brugeradgang i Supabase Auth; denne app tilbyder ikke
-offentlig selvregistrering. Log ind på websiden for at se gemte ture. Direkte
-ESP-upload er næste trin; import af GPX/CSV på websiden gemmer ikke filen i
-databasen.
+offentlig selvregistrering. Log ind på websiden for at se gemte ture. Import af
+GPX/CSV på websiden gemmer ikke filen i databasen.
 
 På Vercel skal `VITE_SUPABASE_URL` og `VITE_SUPABASE_PUBLISHABLE_KEY` sættes
 under projektets Environment Variables for hvert miljø, hvorefter der skal
@@ -44,9 +43,9 @@ ESP-uploadens Vercel Function kræver også server-side variablerne
 tilfældig `DEVICE_UPLOAD_TOKEN`. De må ikke have `VITE_`-præfiks eller ligge
 i Git. Indtast `DEVICE_UPLOAD_TOKEN` på ESP'ens lokale opsætningsside.
 
-ESP-uploaden forventer målinger med bredde- og længdegrad samt tid og fart.
-Firmwaren skal udvides med disse GPS-data og en direkte uploadfunktion, før
-ESP-ture kan gemmes og vises her.
+Firmwaren inkluderer nu GPS-koordinater, hotspot-opsætning og uploadflow.
+Uploaden er klar til hardwaretest, når servervariablerne er sat, firmwaren er
+flashet, og ESP'en har fået hotspot og device token i sin lokale side.
 
 Kortfliser fra OpenStreetMap kræver internetforbindelse. Kortudbyderen modtager
 de kortfelter, browseren efterspørger, så den kan se hvilket område der vises.
